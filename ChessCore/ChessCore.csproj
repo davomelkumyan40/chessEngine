@@ -43,14 +43,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BoardModel.cs" />
-    <Compile Include="Chess.cs" />
+    <Compile Include="StateInfo.cs" />
+    <Compile Include="Models\BoardModel.cs" />
+    <Compile Include="Engine.cs" />
     <Compile Include="ChessExceptions\InvalidCoordinateException.cs" />
     <Compile Include="ChessExceptions\InvalidVectorException.cs" />
     <Compile Include="CMath\Coordinate.cs" />
-    <Compile Include="FigureModel.cs" />
+    <Compile Include="Models\FigureModel.cs" />
     <Compile Include="CMath\ChessConvert.cs" />
-    <Compile Include="SquareModel.cs" />
+    <Compile Include="Models\SquareModel.cs" />
     <Compile Include="Pattern.cs" />
     <Compile Include="Extender.cs" />
     <Compile Include="Native\_Color.cs" />

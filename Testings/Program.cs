@@ -5,12 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 //External
 using ChessCore;
+using ChessCore.Models;
 using ChessCore.Native;
 using ChessCore.CMath;
-using System.Diagnostics;
 
 namespace Testings
 {
@@ -18,15 +19,7 @@ namespace Testings
     {
         static void Main(string[] args)
         {
-            Chess c = new Chess(Color.White, true); // true
-            //Chess.TestMode = true;
-            // Е2 Е4
-            // Е7 Е5
-            // D1 H5
-            // B8 C6
-            // F1 C4
-            // G8 F6
-            // H5 F7
+            Engine c = new Engine(Color.White, true);
             var stepCorrect = new List<bool>();
             stepCorrect.Add(c.Board.Move(new Coordinate('E', 2), new Coordinate('E', 4)));
             stepCorrect.Add(c.Board.Move(new Coordinate('E', 7), new Coordinate('E', 5)));
@@ -34,7 +27,7 @@ namespace Testings
             stepCorrect.Add(c.Board.Move(new Coordinate('B', 8), new Coordinate('C', 6)));
             stepCorrect.Add(c.Board.Move(new Coordinate('F', 1), new Coordinate('C', 4)));
             stepCorrect.Add(c.Board.Move(new Coordinate('G', 8), new Coordinate('F', 6)));
-            stepCorrect.Add(c.Board.Move(new Coordinate('H', 5), new Coordinate('F', 7)));
+            //stepCorrect.Add(c.Board.Move(new Coordinate('H', 5), new Coordinate('F', 7)));
             stepCorrect.ForEach((el) => Debug.WriteLine(el));
 
 
@@ -50,8 +43,7 @@ namespace Testings
                     char goS = command[2];
                     byte goN = byte.Parse(command[3].ToString());
 
-                    if (c.Board.Move(new Coordinate(s, n), new Coordinate(goS, goN)))
-                        Console.Beep();
+                    c.Board.Move(new Coordinate(s, n), new Coordinate(goS, goN));
                 }
                 else if (command == "r")
                     c.Board.RollBack();
@@ -62,7 +54,6 @@ namespace Testings
         private static void ChessUI2_0(BoardModel board)
         {
             //Console UI 2.0
-
             Console.Clear();
             Console.BufferHeight = 90;
             Console.WindowHeight = 50;
@@ -152,14 +143,20 @@ namespace Testings
                 Console.Write($"    {p}   ");
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
             }
-            Console.WriteLine("\n\n");
-            Console.WriteLine(new string('_', 65));
-            Console.WriteLine($"Who's Step? : {board.PlayColor}");
-            Console.Write($"\nWhite: {board.EatenList.Count(c => c.Color == Color.Black)}  ");
-            Console.WriteLine($"Black: {board.EatenList.Count(c => c.Color == Color.White)}  ");
-            Console.WriteLine($"{board.IsCheck}");
-
-
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("\n\n");
+            builder.AppendLine(new string('_', 65));
+            builder.AppendLine($"Step : {board.PlayColor}");
+            builder.Append($"\nWhite: {board.EatenList.Count(c => c.Color == Color.Black)}  ");
+            builder.AppendLine($"Black: {board.EatenList.Count(c => c.Color == Color.White)}  ");
+            builder.AppendLine($"Is Check: {board.CheckState.IsCheck} for : {board.PlayColor}");
+            builder.AppendLine($"Is Mate: {board.CheckState.IsMate} for : {board.PlayColor}");
+            foreach (FigureModel figure in board.CheckState.ThreatenFigures)
+            {
+                builder.AppendLine($"{figure.Type} Position:  X:{figure.Position.X} Y:{figure.Position.Y}");
+            }
+            Console.WriteLine(builder.ToString());
+            builder.Clear();
         }
 
         private static void ChessUI1_0(object state)
@@ -252,7 +249,7 @@ namespace Testings
 
             //---act действие
 
-            Chess c = new Chess(Color.White);
+            Engine c = new Engine(Color.White);
             var resList = new List<bool>(pathList.Count);
 
             foreach (var path in pathList)

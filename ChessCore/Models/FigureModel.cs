@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using ChessCore.CMath;
 using ChessCore.Native;
 
-namespace ChessCore
+namespace ChessCore.Models
 {
     public class FigureModel
     {
@@ -14,6 +15,7 @@ namespace ChessCore
             this.Color = color;
             this.Transform = Figure.None;
             this.Type = type;
+            PossibleSteps = new List<Vector>(); // TODO add capacity
         }
 
         #endregion
@@ -24,6 +26,7 @@ namespace ChessCore
         public Figure Type { get; private set; }
         public Figure Transform { get; set; }
         public Color Color { get; private set; }
+        public List<Vector> PossibleSteps { get; private set; }
 
         #endregion
 

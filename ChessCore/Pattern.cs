@@ -1,7 +1,7 @@
 ﻿using ChessCore.CMath;
 using ChessCore.Native;
+using ChessCore.Models;
 using System;
-using System.Text;
 
 namespace ChessCore
 {
@@ -11,7 +11,7 @@ namespace ChessCore
         private Color startColor;
         #endregion
 
-        public Pattern(Color startColor)
+        public Pattern(Color startColor) // TODO remove if no use
         {
             this.startColor = startColor;
         }
@@ -73,6 +73,7 @@ namespace ChessCore
             return false;
         }
 
+        //fixed
         private bool CanMoveKnight(FigureModel figure, Vector to)
         {
             var x = Math.Abs(figure.Position.X - to.X);
@@ -99,11 +100,12 @@ namespace ChessCore
                 return CanMoveRook(figure, to);
         }
 
+        //fixed
         private bool CanMoveKing(FigureModel figure, Vector to)
         {
-            var x = Math.Abs(figure.Position.X - to.X);
-            var y = Math.Abs(figure.Position.Y - to.Y);
-            if (x == 1 || y == 1)
+            var dif_x = Math.Abs(figure.Position.X - to.X);
+            var dif_y = Math.Abs(figure.Position.Y - to.Y);
+            if ((dif_x == 1 && dif_y == 0) || (dif_y == 1 && dif_x == 0))
                 return true;
             return false;
         }

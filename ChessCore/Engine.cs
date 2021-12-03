@@ -1,18 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ChessCore.CMath;
 using ChessCore.Native;
+using ChessCore.Models;
 
 namespace ChessCore
 {
-    public class Chess
+    public class Engine
     {
         #region ctor
 
-        public Chess(Color startColor, bool fillBoard = false)
+        public Engine(Color startColor, bool fillBoard = false)
         {
             Board = new BoardModel(startColor, fillBoard);
             StartColor = startColor;

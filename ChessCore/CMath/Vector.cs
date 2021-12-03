@@ -35,7 +35,7 @@ namespace ChessCore.CMath
 
         public override bool Equals(object obj)
         {
-            return this.GetHashCode() == obj.GetHashCode();
+            return this == obj as Vector?; // TODO finish
         }
 
         public override int GetHashCode()

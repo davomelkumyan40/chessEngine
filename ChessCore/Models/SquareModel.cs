@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 using ChessCore.CMath;
 using ChessCore.Native;
 
-namespace ChessCore
+namespace ChessCore.Models
 {
+    //TODO finish color auto generation
     public class SquareModel
     {
         #region ctors
@@ -22,12 +23,6 @@ namespace ChessCore
         {
             this.Position = figure.Position;
             this.Figure = figure;
-        }
-
-        public SquareModel(Figure type, Color color, Vector position)
-        {
-            this.Figure = new FigureModel(type, color, position);
-            this.Position = position;
         }
 
         #endregion

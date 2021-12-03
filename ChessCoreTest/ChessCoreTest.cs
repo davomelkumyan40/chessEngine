@@ -5,6 +5,7 @@ using ChessCore;
 using ChessCore.Native;
 using ChessCore.CMath;
 using System.Collections.Generic;
+using System.Runtime.Remoting.Messaging;
 
 namespace ChessCoreTest
 {
@@ -28,7 +29,7 @@ namespace ChessCoreTest
             bool expected = true;
 
             //---act  действие
-            Chess c = new Chess(Color.Black, true);
+            Engine c = new Engine(Color.Black, true);
 
             var r1 = c.Board.Move(path1.Key, path1.Value);
             c.Board.SwapColor();
@@ -77,7 +78,7 @@ namespace ChessCoreTest
 
             //---act действие
 
-            Chess c = new Chess(Color.White, true);
+            Engine c = new Engine(Color.White, true);
 
             var r1 = c.Board.Move(path1.Key, path1.Value);
             c.Board.SwapColor();
@@ -105,6 +106,7 @@ namespace ChessCoreTest
             Assert.AreEqual(expected, r6);
             Assert.AreEqual(expected, r7);
             Assert.AreEqual(expected, r8);
+            Assert.ThrowsException<Exception>(() => throw new Exception());
         }
 
         [TestMethod]
@@ -131,7 +133,7 @@ namespace ChessCoreTest
 
             //---act действие
 
-            Chess c = new Chess(Color.White);
+            Engine c = new Engine(Color.White);
             var resList = new List<bool>(pathList.Count);
 
             foreach (var path in pathList)

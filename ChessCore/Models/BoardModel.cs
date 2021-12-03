@@ -5,13 +5,13 @@ using System.Linq;
 using ChessCore.CMath;
 using ChessCore.Native;
 
-namespace ChessCore
+namespace ChessCore.Models
 {
     public class BoardModel
     {
-        internal const byte WIDTH = 8;
-        internal const byte HEIGHT = 8;
-        internal const byte MAXFIGURECOUNT = 36;
+        public const byte WIDTH = 8;
+        public const byte HEIGHT = 8;
+        public const byte MAXFIGURECOUNT = 36;
 
         #region ctors
 
@@ -22,6 +22,7 @@ namespace ChessCore
             EatenList = new Stack<FigureModel>(MAXFIGURECOUNT);
             playColor = startColor;
             StepsPattern = new Pattern(startColor);
+            CheckState = new StateInfo(false);
             if (fillBoard)
                 ResetDefault();
             else
@@ -45,8 +46,7 @@ namespace ChessCore
         public Stack<KeyValuePair<Vector, Vector>> StepList { get; private set; }
         public Stack<FigureModel> EatenList { get; private set; }
         public Pattern StepsPattern { get; private set; }
-        public bool IsMate { get; private set; } // TODO finish Mate
-        public bool IsCheck { get; private set; }
+        public StateInfo CheckState { get; private set; }
 
         #endregion
 
@@ -100,37 +100,39 @@ namespace ChessCore
         {
             if (figure != null && to != null)
             {
-                if (Chess.TestMode || figure.Color == PlayColor) // TODO Remove
+                if (StepsPattern.CanMove(figure, to))
                 {
-                    if (StepsPattern.CanMove(figure, to))
-                    {
-                        var obstacle = GetObstacleSquare(figure, to);
+                    var obstacle = GetObstacleSquare(figure, to);
 
-                        if (obstacle != null)
-                            if (obstacle.Position != to.Position || obstacle.Figure.Color == figure.Color)
+                    if (obstacle != null)
+                        if (obstacle.Position != to.Position || obstacle.Figure.Color == figure.Color)
+                            return false;
+                    if (figure.Type == Figure.Pawn)
+                    {
+                        var x_dif = Math.Abs(figure.Position.X - to.Position.X);
+                        if (obstacle == null)
+                        {
+                            if (x_dif == 1)
                                 return false;
-                        if (figure.Type == Figure.Pawn)
-                        {
-                            var x_dif = Math.Abs(figure.Position.X - to.Position.X);
-                            if(obstacle == null)
-                            {
-                                if (x_dif == 1)
-                                    return false;
-                            }
-                            else
-                            {
-                                if (x_dif == 0)
-                                    return false;
-                            }
                         }
-                        Swap(figure, to);
-                        IterableSquareList = SquareList.AsEnumerable();
-                        if (IsSafeForToMove())
+                        else
                         {
-                            IsCheck = IsCheckForOponent();
-                            return true;
+                            if (x_dif == 0)
+                                return false;
                         }
                     }
+                    MakeStep(figure, to);
+                    IterableSquareList = SquareList.AsEnumerable();
+                    if (StepIsSafe()) // check safity of step that was written
+                    {
+                        IsCheckForOponent();
+                        if (CheckState.IsCheck)
+                            IsMateForOponent();
+
+                        return !CheckState.IsMate;
+                    }
+                    else
+                        RollBack();
                 }
             }
             return false;
@@ -140,7 +142,7 @@ namespace ChessCore
 
         public bool Move(Coordinate from, Coordinate to) => Move(ChessConvert.ToVector(from), ChessConvert.ToVector(to));
 
-        public void Swap(FigureModel figure, SquareModel to)
+        public void MakeStep(FigureModel figure, SquareModel to)
         {
             StepList.Push(new KeyValuePair<Vector, Vector>(figure.Position, to.Position));
             //Swaping figure;
@@ -212,7 +214,7 @@ namespace ChessCore
             return endPoints;
         }
 
-        public bool IsSafeForToMove()
+        public bool StepIsSafe() // check's if white player is check or not
         {
             playColor.SwapColor();
             var squareKingCurrent = IterableSquareList.SingleOrDefault(s => s.Figure != null && s.Figure.Type == Figure.King && s.Figure.Color == PlayColor);
@@ -225,7 +227,6 @@ namespace ChessCore
                 new Vector(0, squareKingCurrent.Position.Y),
             };
             Vector[] pathsAng = GetAngleEndPoints(squareKingCurrent);
-            var paths = new Vector[][] { pathsSt, pathsAng };
 
             if (squareKingCurrent != null)
             {
@@ -236,7 +237,6 @@ namespace ChessCore
                         if (StepsPattern.CanMove(obstacle.Figure, squareKingCurrent) && obstacle.Figure.Color != PlayColor)
                         {
                             playColor.SwapColor();
-                            RollBack();
                             return false;
                         }
                 }
@@ -248,19 +248,20 @@ namespace ChessCore
                         if (StepsPattern.CanMove(obstacle.Figure, squareKingCurrent) && obstacle.Figure.Color != PlayColor)
                         {
                             playColor.SwapColor();
-                            RollBack();
                             return false;
                         }
                 }
             }
             playColor.SwapColor();
+            this.CheckState.ThreatenFigures.Clear();
             return true;
         }
 
-        public bool IsCheckForOponent()
+        public void IsCheckForOponent()
         {
             var squareKingOponent = IterableSquareList.SingleOrDefault(s => s.Figure != null && s.Figure.Type == Figure.King && s.Figure.Color == PlayColor);
 
+            //TODO replace to const or static
             Vector[] pathsSt = // final paths for king obstacle checking
             {
                 new Vector(squareKingOponent.Position.X, 0),
@@ -277,8 +278,11 @@ namespace ChessCore
                 {
                     var obstacle = GetObstacleAngle(squareKingOponent.Position, v);
                     if (obstacle != null)
-                        if (StepsPattern.CanMove(obstacle.Figure, squareKingOponent) && obstacle.Figure.Color != PlayColor)
-                            return true;
+                        if (obstacle.Figure.Color != PlayColor && StepsPattern.CanMove(obstacle.Figure, squareKingOponent))
+                        {
+                            CheckState.ThreatenFigures.Add(obstacle.Figure);
+                            CheckState.IsCheck = true;
+                        }
                 }
 
                 foreach (Vector v in pathsSt)
@@ -286,14 +290,83 @@ namespace ChessCore
                     var obstacle = GetObstacleStraight(squareKingOponent.Position, v);
                     if (obstacle != null)
                     {
-                        if (StepsPattern.CanMove(obstacle.Figure, squareKingOponent) && obstacle.Figure.Color != PlayColor)
-                            if (obstacle.Figure.Type == Figure.Pawn)
-                                return false;
-                        return true;
+                        if (obstacle.Figure.Color != PlayColor && StepsPattern.CanMove(obstacle.Figure, squareKingOponent))
+                            if (obstacle.Figure.Type != Figure.Pawn)
+                            {
+                                CheckState.ThreatenFigures.Add(obstacle.Figure);
+                                CheckState.IsCheck = true;
+                            }
                     }
                 }
             }
-            return false;
+        }
+
+        public void IsMateForOponent()
+        {
+            var squareKingCurrent = IterableSquareList.SingleOrDefault(s => s.Figure != null && s.Figure.Type == Figure.King && s.Figure.Color == PlayColor);
+
+            Vector[] pathsSt = // final paths for king obstacle checking
+            {
+                new Vector(squareKingCurrent.Position.X, (byte)(squareKingCurrent.Position.Y == 0 ? squareKingCurrent.Position.Y : squareKingCurrent.Position.Y - 1)),
+                new Vector((byte)(squareKingCurrent.Position.X == 7 ? squareKingCurrent.Position.X : squareKingCurrent.Position.X + 1), squareKingCurrent.Position.Y),
+                new Vector(squareKingCurrent.Position.X, (byte)(squareKingCurrent.Position.Y == 7 ? squareKingCurrent.Position.Y : squareKingCurrent.Position.Y + 1)),
+                new Vector((byte)(squareKingCurrent.Position.X == 0 ? squareKingCurrent.Position.X : squareKingCurrent.Position.X - 1), squareKingCurrent.Position.Y),
+            };
+            Vector[] pathsAng =
+            {
+                new Vector((byte)(squareKingCurrent.Position.X == 0 ? squareKingCurrent.Position.X : squareKingCurrent.Position.X - 1), (byte)(squareKingCurrent.Position.Y == 0 ? squareKingCurrent.Position.Y : squareKingCurrent.Position.Y - 1)),
+                new Vector((byte)(squareKingCurrent.Position.X == 0 ? squareKingCurrent.Position.X : squareKingCurrent.Position.X - 1), (byte)(squareKingCurrent.Position.Y == 7 ? squareKingCurrent.Position.Y : squareKingCurrent.Position.Y + 1)),
+                new Vector((byte)(squareKingCurrent.Position.X == 7 ? squareKingCurrent.Position.X : squareKingCurrent.Position.X + 1), (byte)(squareKingCurrent.Position.Y == 0 ? squareKingCurrent.Position.Y : squareKingCurrent.Position.Y - 1)),
+                new Vector((byte)(squareKingCurrent.Position.X == 7 ? squareKingCurrent.Position.X : squareKingCurrent.Position.X + 1), (byte)(squareKingCurrent.Position.Y == 7 ? squareKingCurrent.Position.Y : squareKingCurrent.Position.Y + 1)),
+            };
+
+            SquareModel obstacle = null;
+            foreach (Vector v in pathsSt)
+            {
+                obstacle = GetObstacleStraight(squareKingCurrent.Position, v);
+                if (v == squareKingCurrent.Position)
+                    continue;
+                if (obstacle != null)
+                {
+                    if (obstacle.Figure.Color == squareKingCurrent.Figure.Color)
+                        continue;
+                    TryMove(squareKingCurrent, v);
+                }
+                else
+                    TryMove(squareKingCurrent, v);
+            }
+
+            foreach (Vector v in pathsAng)
+            {
+                if (pathsSt.Contains(v))
+                    continue;
+                obstacle = GetObstacleAngle(squareKingCurrent.Position, v);
+
+                if (v == squareKingCurrent.Position)
+                    continue;
+                if (obstacle != null)
+                {
+                    if (obstacle.Figure.Color == squareKingCurrent.Figure.Color)
+                        continue;
+                    TryMove(squareKingCurrent, v);
+                }
+                else
+                    TryMove(squareKingCurrent, v);
+            }
+            if (squareKingCurrent.Figure.PossibleSteps.Count == 0)
+                CheckState.IsMate = true;
+        }
+
+        private void TryMove(SquareModel from, Vector to)
+        {
+            MakeStep(from.Figure, new SquareModel(to));
+            if (StepIsSafe())
+            {
+                from.Figure.PossibleSteps.Add(to);
+                RollBack();
+            }
+            else
+                RollBack();
         }
 
         public void RemoveFigure(Vector from) => SquareList[from.Y, from.X].Figure = null;
@@ -311,7 +384,7 @@ namespace ChessCore
                 var lastStep = StepList.Pop();
 
                 // just rolling back last figure witch was moved
-                Swap(SquareList[lastStep.Value.Y, lastStep.Value.X].Figure, SquareList[lastStep.Key.Y, lastStep.Key.X]);
+                MakeStep(SquareList[lastStep.Value.Y, lastStep.Value.X].Figure, SquareList[lastStep.Key.Y, lastStep.Key.X]);
                 if (EatenList.Count > 0)
                     if (EatenList.Peek().Position == lastStep.Value)    // if last eaten figure position was equal to last step final position
                         SquareList[lastStep.Value.Y, lastStep.Value.X].Figure = EatenList.Pop();  // then we repairing it to previous square
